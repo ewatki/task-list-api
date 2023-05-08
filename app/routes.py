@@ -1,6 +1,8 @@
 from flask import Blueprint, jsonify, request, abort, make_response
 from app import db
 from app.models.task import Task
+from sqlalchemy import desc
+from datetime import datetime
 # from app.models.goal import Goal
 
 task_bp = Blueprint("tasks", __name__, url_prefix="/tasks")
@@ -18,9 +20,6 @@ def validate_task(task_id):
     
     return task
 
-
-def validate_task_details():
-    pass
 
 # Create a Task: Valid Task with 'null' 'completed at'
 @task_bp.route("", methods=["POST"])
@@ -52,12 +51,21 @@ def handle_tasks():
         }
     }, 201
 
+
 # Get Saved Tasks from the database
 @task_bp.route("", methods=["GET"])
 def read_all_tasks(): 
     task_response = []
 
-    tasks = Task.query.all()
+    sort_query = request.args.get("sort")
+
+    if sort_query == "asc": 
+        tasks = Task.query.order_by(Task.title).all()
+    elif sort_query == "desc": 
+        tasks = Task.query.order_by(desc(Task.title)).all()
+    else: 
+        tasks = Task.query.all()
+
     if tasks: 
         for task in tasks:
             task_response.append({
@@ -74,12 +82,12 @@ def read_one_task(task_id):
     task = validate_task(task_id)
     return { 
         "task":
-        {
-            "id": task.task_id,
-            "title": task.title,
-            "description": task.description,
-            "is_complete": bool(task.completed_at)
-        }
+            {
+                "id": task.task_id,
+                "title": task.title,
+                "description": task.description,
+                "is_complete": bool(task.completed_at)
+            }
     }
 
 @task_bp.route("/<task_id>", methods=["PUT"])
@@ -108,3 +116,23 @@ def delete_task(task_id):
     db.session.commit()
 
     return make_response({"details": f'Task {task.task_id} "{task.title}" successfully deleted'})
+
+
+@task_bp.route("/<task_id>/<task_status>", methods=["PATCH"])
+def update_completed_task(task_id, task_status): 
+    task = validate_task(task_id)
+    if task: 
+        if task_status == "mark_complete":
+            task.completed_at = datetime.now()
+        elif task_status == "mark_incomplete": 
+            task.completed_at = None
+
+    db.session.commit()
+
+    return {
+        "task": {
+        "id": task.task_id,
+        "title": task.title,
+        "description": task.description,
+        "is_complete": bool(task.completed_at)
+    }}
