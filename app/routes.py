@@ -35,10 +35,7 @@ def handle_tasks():
     if len(request_body) < 2:
         return {"details": "Invalid data"}, 400
     else: 
-        new_task = Task(
-            title = request_body["title"],
-            description = request_body["description"]
-        )
+        new_task = Task.from_dict(request_body)
 
     # database collects new changes - adding new_task as a record
     db.session.add(new_task)
@@ -72,27 +69,35 @@ def read_all_tasks():
 
     if tasks: 
         for task in tasks:
-            task_response.append({
-                "id": task.task_id,
-                "title": task.title,
-                "description": task.description,
-                "is_complete": bool(task.completed_at)
-            })
+            task_response.append(task.to_dict())
     return jsonify(task_response)
 
 
 @task_bp.route("/<task_id>", methods=["GET"])
 def read_one_task(task_id): 
     task = validate_model(Task, task_id)
-    return { 
-        "task":
-            {
-                "id": task.task_id,
-                "title": task.title,
-                "description": task.description,
-                "is_complete": bool(task.completed_at)
-            }
-    }
+    if not task.goal_id: 
+        return { 
+            "task":
+                {
+                    "id": task.task_id,
+                    "title": task.title,
+                    "description": task.description,
+                    "is_complete": bool(task.completed_at)
+                }
+        }
+    else: 
+        return { 
+            "task":
+                {
+                    "id": task.task_id,
+                    "title": task.title,
+                    "description": task.description,
+                    "is_complete": bool(task.completed_at),
+                    "goal_id": task.goal_id
+                }
+        }
+
 
 
 @task_bp.route("/<task_id>", methods=["PUT"])
@@ -238,3 +243,38 @@ def delete_goal(goal_id):
     db.session.commit()
 
     return make_response({"details": f'Goal {goal.goal_id} "{goal.title}" successfully deleted'})
+
+
+@goal_bp.route("/<goal_id>/tasks", methods=["POST"])
+def create_tasks_for_goal(goal_id): 
+    goal = validate_model(Goal, goal_id)
+    request_body = request.get_json()
+
+    for task in request_body["task_ids"]:
+        task = validate_model(Task, task)
+        goal.tasks.append(task)
+
+    
+    db.session.commit()
+    return {
+        "id": goal.goal_id,
+        "task_ids": request_body["task_ids"]
+    }
+
+
+
+@goal_bp.route("/<goal_id>/tasks", methods=["GET"])
+def read_tasks_from_goal(goal_id): 
+    goal = validate_model(Goal, goal_id)
+
+    goals_tasks = {
+        "id": goal.goal_id,
+        "title": goal.title,
+        "tasks": []
+    }
+
+    for task in goal.tasks: 
+
+        goals_tasks["tasks"].append(task.to_dict())
+
+    return goals_tasks, 200
