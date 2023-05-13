@@ -138,7 +138,7 @@ def handle_slack_api(task_title):
         "text": task_title
         }
 
-    auth_key = {"Authorization": f"Bearer " + os.environ.get('AUTHORIZATION')}
+    auth_key = {"Authorization": f"Bearer {os.environ.get('AUTHORIZATION')}"}
 
     response = requests.post(url, headers=auth_key, data=payload)
 
