@@ -111,6 +111,7 @@ def handle_slack_api(task_title):
 
     response = requests.post(url, headers=auth_key, data=payload)
 
+    print(f"This is the {payload}")
     print(response.text)
 
 
