@@ -42,15 +42,7 @@ def handle_tasks():
     # database saves and commits the new changes
     db.session.commit()
 
-    return {
-        "task": 
-        {
-            "id": new_task.task_id,
-            "title": new_task.title,
-            "description": new_task.description,
-            "is_complete": bool(new_task.completed_at)
-        }
-    }, 201
+    return {"task": new_task.to_dict()}, 201
 
 
 # Get Saved Tasks from the database
@@ -77,27 +69,9 @@ def read_all_tasks():
 def read_one_task(task_id): 
     task = validate_model(Task, task_id)
     if not task.goal_id: 
-        return { 
-            "task":
-                {
-                    "id": task.task_id,
-                    "title": task.title,
-                    "description": task.description,
-                    "is_complete": bool(task.completed_at)
-                }
-        }
+        return {"task": task.to_dict()}, 200
     else: 
-        return { 
-            "task":
-                {
-                    "id": task.task_id,
-                    "title": task.title,
-                    "description": task.description,
-                    "is_complete": bool(task.completed_at),
-                    "goal_id": task.goal_id
-                }
-        }
-
+        return {"task": task.to_dict()}, 200
 
 
 @task_bp.route("/<task_id>", methods=["PUT"])
@@ -107,16 +81,12 @@ def update_task(task_id):
 
     task.title = request_body["title"]
     task.description = request_body["description"]
+    # task.completed_at = request_body["completed_at"]
 
     db.session.commit()
 
-    return {
-        "task": {
-        "id": task.task_id,
-        "title": task.title,
-        "description": task.description,
-        "is_complete": bool(task.completed_at)
-    }}
+    return {"task": task.to_dict()}, 200
+
 
 @task_bp.route("/<task_id>", methods=["DELETE"])
 def delete_task(task_id): 
@@ -128,14 +98,13 @@ def delete_task(task_id):
     return make_response({"details": f'Task {task.task_id} "{task.title}" successfully deleted'})
 
 
-
-
 def handle_slack_api(task_title): 
-    url = "https://slack.com/api/chat.postMessage?channel=task-notifications&text=beep%20boop&pretty=1"
+    # shorten url
+    url = "https://slack.com/api/chat.postMessage"
 
     payload = {
         "channel": "C0574HS4KL2", 
-        "text": task_title
+        "text": f"Someone just completed the task {task_title}"
         }
 
     auth_key = {"Authorization": f"Bearer {os.environ.get('AUTHORIZATION')}"}
@@ -143,8 +112,6 @@ def handle_slack_api(task_title):
     response = requests.post(url, headers=auth_key, data=payload)
 
     print(response.text)
-
-
 
 
 @task_bp.route("/<task_id>/<task_status>", methods=["PATCH"])
@@ -160,13 +127,8 @@ def update_completed_task(task_id, task_status):
 
     db.session.commit()
 
-    return {
-        "task": {
-        "id": task.task_id,
-        "title": task.title,
-        "description": task.description,
-        "is_complete": bool(task.completed_at)
-    }}
+    return {"task": task.to_dict()}, 200
+
 
 # Wave 5: Creating a Second Model Goal
 # Make a POST request
